@@ -11,7 +11,7 @@ const API_KEY = "1bcd7ab8518b8bb0266f0f3952aca8d2";
 
 app.get("/weather", async (req, res) => {
 
-    // 🧠 STEP 1: CHECK CACHE FIRST
+    //  CHECK CACHE FIRST
     if (isCacheValid(10)) {
         console.log("Returning cached data");
         return res.json(getCache()?.data);

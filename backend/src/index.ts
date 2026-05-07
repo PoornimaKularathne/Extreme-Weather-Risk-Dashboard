@@ -20,7 +20,7 @@ app.get("/weather", async (req, res) => {
             )
         );
 
-        // 🔥 Transform data
+        //  Transform data
         const processed = results.map(r => {
             const data = r.data;
 
@@ -33,7 +33,7 @@ app.get("/weather", async (req, res) => {
             };
         });
 
-        // 🔥 Sort by risk (highest first)
+        //  Sort by risk (highest first)
         processed.sort((a, b) => b.risk - a.risk);
 
         res.json(processed);
