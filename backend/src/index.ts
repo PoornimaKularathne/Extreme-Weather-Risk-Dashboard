@@ -1,7 +1,7 @@
 import express from "express";
 import axios from "axios";
 import cors from "cors";
-import { calculateRisk } from "../utils/riskCalculator";
+import { calculateRisk } from "./utils/riskCalculator";
 
 const app = express();
 app.use(cors());
