@@ -1,177 +1,314 @@
-# 🌦 Extreme Weather Risk Dashboard
+#  Extreme Weather Risk Dashboard
 
-A modern, production-ready React + TypeScript dashboard for monitoring extreme weather risks across multiple cities. Built with a sleek dark theme, glassmorphism UI, and smooth animations.
+A **full-stack weather analytics dashboard** that fetches real-time weather data, computes a **custom risk score**, and presents insights through a **modern, responsive UI**.
 
-## ✨ Features
+This project was built for the **Innovior Internship Challenge** to demonstrate:
 
-### 🎨 Modern UI/UX Design
-- **Dark Theme**: Professional dark navy (#0B1220) background with glassmorphism effects
-- **Responsive Design**: Fully responsive across desktop, tablet, and mobile devices
-- **Smooth Animations**: Framer Motion powered transitions and hover effects
-- **Glassmorphism Cards**: Translucent cards with blur effects and subtle shadows
+* API integration under constraints
+* Performance optimization (caching)
+* Clean system design
+* Testable backend logic
+* Production-style frontend UX
 
-### 📊 Dashboard Analytics
-- **Real-time Risk Monitoring**: Live weather data integration with risk scoring
-- **Visual Risk Indicators**: Color-coded risk levels (Low/Medium/High) with progress bars
-- **City Grid Layout**: Responsive card-based layout for multiple cities
-- **Summary Statistics**: Dashboard overview with risk distribution metrics
+---
 
-### 🧭 Navigation & Sections
-- **Sticky Navigation Bar**: Responsive navbar with mobile hamburger menu
-- **Single Page Application**: Smooth scrolling between Home, Dashboard, About, and Contact sections
-- **Professional Footer**: Complete footer with links and branding
+#  Problem Statement
 
-### 🔧 Technical Features
-- **TypeScript**: Full type safety throughout the application
-- **Axios Integration**: Preserved existing backend API integration
-- **Component Architecture**: Modular, reusable React components
-- **Performance Optimized**: Efficient rendering with minimal re-renders
+External weather APIs have **rate limits**.
+A naive implementation would:
 
-## 🚀 Getting Started
+* call the API on every request ❌
+* waste API quota ❌
+* increase latency ❌
 
-### Prerequisites
-- Node.js (v16 or higher)
-- npm or yarn
+ **Goal:** Build a system that:
 
-### Installation
+1. Fetches weather data for multiple cities
+2. Calculates a meaningful **risk score**
+3. **Minimizes API calls** using caching
+4. Displays results in a **clear, user-friendly dashboard**
 
-1. **Clone the repository**
-   ```bash
-   git clone <repository-url>
-   cd Extreme-Weather-Risk-Dashboard
-   ```
+---
 
-2. **Install backend dependencies**
-   ```bash
-   cd backend
-   npm install
-   ```
+#  System Architecture
 
-3. **Install frontend dependencies**
-   ```bash
-   cd ../frontend
-   npm install
-   ```
-
-### Running the Application
-
-1. **Start the backend server**
-   ```bash
-   cd backend
-   npm run dev
-   ```
-   The backend will run on `http://localhost:5000`
-
-2. **Start the frontend development server**
-   ```bash
-   cd frontend
-   npm start
-   ```
-   The frontend will run on `http://localhost:3000`
-
-3. **Open your browser** and navigate to `http://localhost:3000`
-
-## 🏗️ Project Structure
-
-```
-Extreme-Weather-Risk-Dashboard/
-├── backend/                 # Express.js API server
-│   ├── src/
-│   │   ├── index.ts        # Main server file
-│   │   └── weatherCache.ts # Weather data caching logic
-│   └── package.json
-├── frontend/                # React application
-│   ├── src/
-│   │   ├── components/      # Reusable UI components
-│   │   │   ├── Navbar.tsx   # Navigation bar
-│   │   │   ├── RiskCard.tsx # City risk display card
-│   │   │   ├── About.tsx    # About section
-│   │   │   ├── Contact.tsx  # Contact form
-│   │   │   ├── Footer.tsx   # Footer component
-│   │   │   └── index.ts     # Component exports
-│   │   ├── pages/           # Page components
-│   │   │   ├── Home.tsx     # Landing page
-│   │   │   ├── Dashboard.tsx# Main dashboard
-│   │   │   └── index.ts     # Page exports
-│   │   ├── styles/          # Global styles
-│   │   │   └── global.css   # Design system & utilities
-│   │   ├── App.tsx          # Main app component
-│   │   └── index.tsx        # App entry point
-│   └── package.json
-└── README.md
+```text
+React Frontend (Dashboard UI)
+        ↓
+Express Backend API (/weather)
+        ↓
+OpenWeather API (External Data)
+        ↓
+In-Memory Cache (10 min)
+        ↓
+Risk Calculation Engine
+        ↓
+Sorted Risk Data → UI
 ```
 
-## 🎨 Design System
+---
 
-### Color Palette
-- **Background**: `#0B1220` (Dark Navy)
-- **Card Background**: `rgba(255,255,255,0.05)` (Glassmorphism)
-- **Primary Accent**: `#3B82F6` (Blue)
-- **Danger**: `#EF4444` (Red)
-- **Success**: `#22C55E` (Green)
-- **Warning**: `#F59E0B` (Orange)
+#  Backend (Engineering Core)
 
-### Typography
-- **Font Family**: Inter (system font stack)
-- **Text Colors**: White primary, Gray secondary/muted
+## 🔹 API Endpoint
 
-### Components
-- **Glass Cards**: Translucent with backdrop blur and borders
-- **Smooth Transitions**: 0.3s ease transitions
-- **Hover Effects**: Lift animations and glow effects
-- **Responsive Grid**: Auto-adjusting columns based on screen size
+```http
+GET /weather
+```
 
-## 🔧 API Integration
+Returns:
 
-The frontend integrates with the existing backend API:
+```ts
+{
+  city: string;
+  risk: number;
+  temp: number;
+  wind: number;
+  visibility: number;
+}
+```
 
-- **Endpoint**: `GET /weather`
-- **Response**: Array of city risk objects
-- **Data Structure**:
-  ```typescript
-  {
-    city: string;
-    risk: number;      // 0-100 risk score
-    temp: number;      // Temperature in Celsius
-    wind: number;      // Wind speed in km/h
-    visibility: number; // Visibility in km
-  }
-  ```
+---
 
-## 📱 Responsive Breakpoints
+## 🔹 Caching Strategy (IMPORTANT)
 
-- **Mobile**: < 768px (1 column grid)
-- **Tablet**: 768px - 1024px (2 column grid)
-- **Desktop**: > 1024px (3-4 column grid)
+To handle API limits:
 
-## 🛠️ Technologies Used
+* Cache type: **In-memory**
+* Expiry: **10 minutes**
+* Logic:
 
-### Frontend
-- **React 19**: Modern React with hooks
-- **TypeScript**: Type-safe development
-- **Framer Motion**: Smooth animations
-- **Axios**: HTTP client for API calls
-- **CSS Variables**: Design system implementation
+  * If cache is valid → return cached data ✅
+  * Else → fetch from API + update cache ✅
 
-### Backend
-- **Express.js**: Web framework
-- **TypeScript**: Server-side type safety
-- **CORS**: Cross-origin resource sharing
+ Result:
 
-## 🤝 Contributing
+* Faster responses
+* Reduced API usage
+* Stable performance
 
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
+---
 
-## 📄 License
+##  Risk Scoring Logic
 
-This project is built for the Innovior Internship Challenge.
+Risk score is calculated using:
 
-## 🙏 Acknowledgments
+* 🌡 Temperature
+* 💨 Wind Speed
+* 👁 Visibility
 
-- Built with modern web technologies
-- Inspired by professional analytics dashboards
-- Designed for real-world weather monitoring applications
+### Simplified idea:
+
+* High temperature → higher risk
+* High wind → higher risk
+* Low visibility → higher risk
+
+Output:
+
+```ts
+Risk Score: 0 – 100
+```
+
+---
+
+##  Testing
+
+Implemented **unit testing using Jest**.
+
+Test ensures:
+
+* Stormy conditions → higher risk
+* Calm conditions → lower risk
+
+This validates correctness **independent of API data**
+
+---
+
+#  Frontend (UI/UX)
+
+## 🔹 Design Approach
+
+* Dark theme (navy-based)
+* Glassmorphism UI
+* Clean typography & spacing
+* Smooth animations
+
+---
+
+##  Dashboard Features
+
+* 📊 Summary section:
+
+  * Total cities
+  * Highest risk city
+  * Safest city
+  * Average risk
+
+*  Risk Cards:
+
+  * City name
+  * Risk score (highlighted)
+  * Temperature, wind, visibility
+  * Animated risk bar
+
+*  Risk Indicators:
+
+  * 🟢 Low (0–30)
+  * 🟡 Medium (31–60)
+  * 🔴 High (61–100)
+
+---
+
+##  UX Enhancements
+
+* Loading states (skeleton UI)
+* Error handling with retry
+* Hover animations & micro-interactions
+* Fully responsive layout
+
+---
+
+#  Responsiveness
+
+| Device  | Layout      |
+| ------- | ----------- |
+| Mobile  | 1 column    |
+| Tablet  | 2 columns   |
+| Desktop | 3–4 columns |
+
+---
+
+# Project Structure
+
+```text
+backend/
+  src/
+    index.ts
+    cache/weatherCache.ts
+    utils/riskCalculator.ts
+    tests/riskCalculator.test.ts
+
+frontend/
+  src/
+    components/
+    pages/
+    styles/
+    App.tsx
+```
+
+---
+
+#  Tech Stack
+
+## Frontend
+
+* React + TypeScript
+* Axios
+* Framer Motion
+* CSS (custom design system)
+
+## Backend
+
+* Node.js
+* Express.js
+* TypeScript
+* Axios
+
+## Testing
+
+* Jest
+* ts-jest
+
+---
+
+# 🚀 How to Run
+
+## 1. Clone
+
+```bash
+git clone <repo-url>
+cd Extreme-Weather-Risk-Dashboard
+```
+
+---
+
+## 2. Backend
+
+```bash
+cd backend
+npm install
+npm run dev
+```
+
+Runs on:
+
+```
+http://localhost:5000
+```
+
+---
+
+## 3. Frontend
+
+```bash
+cd frontend
+npm install
+npm start
+```
+
+Runs on:
+
+```
+http://localhost:3000
+```
+
+---
+
+## 4. Run Tests
+
+```bash
+cd backend
+npm run test
+```
+
+---
+
+# AI Usage Disclosure
+
+AI tools were used for:
+
+* UI design improvements
+* Debugging assistance
+* Code structuring suggestions
+
+However:
+
+* Risk logic, caching strategy, and system design were **understood and implemented manually**
+
+---
+
+#  Key Learnings
+
+* Designing systems under constraints
+* API optimization with caching
+* Writing testable backend logic
+* Building scalable UI architecture
+* Improving UX with data visualization
+
+---
+
+#  Conclusion
+
+This project demonstrates:
+
+* Full-stack development capability
+* Performance-aware engineering
+* Clean UI/UX design
+* Practical problem solving
+
+---
+
+# 👩‍💻 Author
+
+**Poornima**
+Innovior Internship Candidate
