@@ -1,55 +1,26 @@
-import express from "express";
-import axios from "axios";
-import cors from "cors";
-import { calculateRisk } from "./utils/riskCalculator";
-import { getCache, setCache, isCacheValid } from "./cache/weatherCache";
+let cacheData: any = null;
+let lastUpdated: number = 0;
 
-const app = express();
-app.use(cors());
+// 📦 Save data to cache
+export const setCache = (data: any) => {
+  cacheData = data;
+  lastUpdated = Date.now();
+};
 
-const API_KEY = "1bcd7ab8518b8bb0266f0f3952aca8d2";
+// 📦 Get cached data
+export const getCache = () => {
+  return {
+    data: cacheData,
+    lastUpdated,
+  };
+};
 
-app.get("/weather", async (req, res) => {
+// ⏱ Check if cache is still valid (in minutes)
+export const isCacheValid = (minutes: number = 10) => {
+  if (!cacheData) return false;
 
-    //  CHECK CACHE FIRST
-    if (isCacheValid(10)) {
-        console.log("Returning cached data");
-        return res.json(getCache()?.data);
-    }
+  const now = Date.now();
+  const diff = (now - lastUpdated) / 1000 / 60;
 
-    try {
-        const cities = ["Colombo", "London", "Tokyo", "Dubai", "New York"];
-
-        const results = await Promise.all(
-            cities.map(city =>
-                axios.get(
-                    `https://api.openweathermap.org/data/2.5/weather?q=${city}&appid=${API_KEY}`
-                )
-            )
-        );
-
-        const processed = results.map(r => {
-            const data = r.data;
-
-            return {
-                city: data.name,
-                risk: calculateRisk(data),
-                temp: data.main.temp,
-                wind: data.wind.speed,
-                visibility: data.visibility
-            };
-        });
-
-        processed.sort((a, b) => b.risk - a.risk);
-
-        // 🧠 STEP 2: SAVE TO CACHE
-        setCache(processed);
-
-        res.json(processed);
-
-    } catch (err) {
-        res.status(500).json({ error: "Failed to fetch weather data" });
-    }
-});
-
-app.listen(5000, () => console.log("Server running on port 5000"));
+  return diff < minutes;
+};
