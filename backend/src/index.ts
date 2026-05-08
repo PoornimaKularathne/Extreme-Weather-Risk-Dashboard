@@ -3,7 +3,6 @@ import axios from "axios";
 import cors from "cors";
 import { calculateRisk } from "./utils/riskCalculator";
 import dotenv from "dotenv";
-
 dotenv.config();
 
 const API_KEY = process.env.API_KEY;
@@ -11,7 +10,7 @@ const API_KEY = process.env.API_KEY;
 const app = express();
 app.use(cors());
 
-const API_KEY = "1bcd7ab8518b8bb0266f0f3952aca8d2";
+
 
 app.get("/weather", async (req, res) => {
     const cities = ["Colombo", "London", "Tokyo", "Dubai", "New York"];
@@ -52,7 +51,4 @@ const PORT = process.env.PORT || 5000;
 
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
-});
-app.get("/", (req, res) => {
-  res.send("Backend is running");
 });
