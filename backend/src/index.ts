@@ -48,6 +48,19 @@ app.get("/weather", async (req, res) => {
 });
 
 const PORT = process.env.PORT || 5000;
+app.get("/weather", async (req, res) => {
+  try {
+    app.get("/", (req, res) => {
+  res.send("Backend is running ");
+});
+    // simple test response first
+    res.json({
+      message: "Weather API working "
+    });
+  } catch (error) {
+    res.status(500).json({ error: "Something went wrong" });
+  }
+});
 
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
