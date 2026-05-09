@@ -4,29 +4,44 @@ import cors from "cors";
 import dotenv from "dotenv";
 import path from "path";
 import { calculateRisk } from "./utils/riskCalculator";
+import { getCache, setCache, isCacheValid } from "./weatherCache";
 
 dotenv.config();
 
 const app = express();
-const PORT = process.env.PORT || 5000;
 
 app.use(cors());
 app.use(express.json());
 
 
-//  SERVE FRONTEND
+// SERVE FRONTEND BUILD
 
-app.use(express.static(path.join(__dirname, "../public")));
+app.use(express.static(path.join(__dirname, "../../frontend/build")));
 
 
-//  API ROUTE
+//  API KEY
 
 const API_KEY = process.env.API_KEY;
 
-app.get("/weather", async (req, res) => {
-  try {
-    const cities = ["Colombo", "London", "Tokyo", "Dubai", "New York"];
 
+//  API CHECK
+
+app.get("/api", (req, res) => {
+  res.json({ message: "Backend running 🚀" });
+});
+
+
+// WEATHER API
+
+app.get("/weather", async (req, res) => {
+  const cities = ["Colombo", "London", "Tokyo", "Dubai", "New York"];
+
+  //  CACHE CHECK
+  if (isCacheValid(10)) {
+    return res.json(getCache()?.data);
+  }
+
+  try {
     const results = await Promise.all(
       cities.map(city =>
         axios.get(
@@ -35,15 +50,21 @@ app.get("/weather", async (req, res) => {
       )
     );
 
-    const processed = results.map(r => ({
-      city: r.data.name,
-      risk: calculateRisk(r.data),
-      temp: r.data.main.temp,
-      wind: r.data.wind.speed,
-      visibility: r.data.visibility
-    }));
+    const processed = results.map(r => {
+      const data = r.data;
+
+      return {
+        city: data.name,
+        risk: calculateRisk(data),
+        temp: data.main.temp,
+        wind: data.wind.speed,
+        visibility: data.visibility
+      };
+    });
 
     processed.sort((a, b) => b.risk - a.risk);
+
+    setCache(processed);
 
     res.json(processed);
 
@@ -53,14 +74,16 @@ app.get("/weather", async (req, res) => {
 });
 
 
-// FRONTEND ROUTE
+//  FRONTEND ROUTE (IMPORTANT)
 
 app.get("*", (req, res) => {
-  res.sendFile(path.join(__dirname, "../public/index.html"));
+  res.sendFile(path.join(__dirname, "../../frontend/build/index.html"));
 });
 
 
-//  START SERVER
+//  PORT
+
+const PORT = process.env.PORT || 5000;
 
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);

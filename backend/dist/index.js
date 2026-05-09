@@ -9,31 +9,48 @@ const cors_1 = __importDefault(require("cors"));
 const dotenv_1 = __importDefault(require("dotenv"));
 const path_1 = __importDefault(require("path"));
 const riskCalculator_1 = require("./utils/riskCalculator");
+const weatherCache_1 = require("./weatherCache");
 dotenv_1.default.config();
 const app = (0, express_1.default)();
-const PORT = process.env.PORT || 5000;
 app.use((0, cors_1.default)());
 app.use(express_1.default.json());
 // =========================
-// ✅ SERVE FRONTEND
+// ✅ SERVE FRONTEND BUILD
 // =========================
-app.use(express_1.default.static(path_1.default.join(__dirname, "../public")));
+app.use(express_1.default.static(path_1.default.join(__dirname, "../../frontend/build")));
 // =========================
-// ✅ API ROUTE
+// ✅ API KEY
 // =========================
 const API_KEY = process.env.API_KEY;
+// =========================
+// ✅ API CHECK
+// =========================
+app.get("/api", (req, res) => {
+    res.json({ message: "Backend running 🚀" });
+});
+// =========================
+// ✅ WEATHER API
+// =========================
 app.get("/weather", async (req, res) => {
+    const cities = ["Colombo", "London", "Tokyo", "Dubai", "New York"];
+    // 🧠 CACHE CHECK
+    if ((0, weatherCache_1.isCacheValid)(10)) {
+        return res.json((0, weatherCache_1.getCache)()?.data);
+    }
     try {
-        const cities = ["Colombo", "London", "Tokyo", "Dubai", "New York"];
         const results = await Promise.all(cities.map(city => axios_1.default.get(`https://api.openweathermap.org/data/2.5/weather?q=${city}&appid=${API_KEY}`)));
-        const processed = results.map(r => ({
-            city: r.data.name,
-            risk: (0, riskCalculator_1.calculateRisk)(r.data),
-            temp: r.data.main.temp,
-            wind: r.data.wind.speed,
-            visibility: r.data.visibility
-        }));
+        const processed = results.map(r => {
+            const data = r.data;
+            return {
+                city: data.name,
+                risk: (0, riskCalculator_1.calculateRisk)(data),
+                temp: data.main.temp,
+                wind: data.wind.speed,
+                visibility: data.visibility
+            };
+        });
         processed.sort((a, b) => b.risk - a.risk);
+        (0, weatherCache_1.setCache)(processed);
         res.json(processed);
     }
     catch (err) {
@@ -41,14 +58,15 @@ app.get("/weather", async (req, res) => {
     }
 });
 // =========================
-// ✅ IMPORTANT: FRONTEND ROUTE
+// ✅ FRONTEND ROUTE (IMPORTANT)
 // =========================
 app.get("*", (req, res) => {
-    res.sendFile(path_1.default.join(__dirname, "../public/index.html"));
+    res.sendFile(path_1.default.join(__dirname, "../../frontend/build/index.html"));
 });
 // =========================
-// ✅ START SERVER
+// ✅ PORT
 // =========================
+const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
 });
